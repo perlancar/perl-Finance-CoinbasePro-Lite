@@ -60,72 +60,80 @@ sub _get_json {
     $decoded;
 }
 
-sub request {
-    my ($self, $method, $request_path, %query_params) = @_;
+sub _request {
+    my ($self, $is_private, $method, $request_path, $params) = @_;
 
-    $self->{key} or die "Please supply API key in new()";
-    $self->{secret} or die "Please supply API secret in new()";
-    $self->{passphrase} or die "Please supply API passphrase in new()";
+    $params //= {};
+
+    if ($is_private) {
+        $self->{key} or die "Please supply API key in new()";
+        $self->{secret} or die "Please supply API secret in new()";
+        $self->{passphrase} or die "Please supply API passphrase in new()";
+    }
 
     my $time = $ENV{FINANCE_GDAX_LITE_DEBUG_TIME} // sprintf "%.3f", time();
-
-    log_trace("API request [%s]: %s %s %s",
-              $time, $method, $request_path, \%query_params);
+    log_trace("API %s request [%s]: %s %s %s",
+              $is_private ? "private" : "public",
+              $time, $method, $request_path, $params);
 
     my $url = "$url_prefix$request_path";
 
     my $body;
     my $encoded_body = '';
     if ($method eq 'POST') {
-        $body = $encoded_body = $self->{_json}->encode(\%query_params);
+        $body = $encoded_body = $self->{_json}->encode($params);
     } else {
-        if (keys %query_params) {
+        if (keys %$params) {
             my $qs = '?' . join(
                 "&",
                 map { $self->{_urienc}->encode($_ // ''). "=" .
-                          $self->{_urienc}->encode($query_params{$_} // '') }
-                    sort keys(%query_params),
+                          $self->{_urienc}->encode($params->{$_} // '') }
+                    sort keys(%$params),
             );
             $url .= $qs;
             $encoded_body = $qs;
         }
     }
 
-    my $what = $time . $method . $request_path . $encoded_body;
-    my $signature = hmac_sha256_base64($what, decode_base64($self->{secret}));
-    while (length($signature) % 4) { $signature .= '=' }
+    my $signature;
+    if ($is_private) {
+        my $what = $time . $method . $request_path . $encoded_body;
+        $signature = hmac_sha256_base64($what, decode_base64($self->{secret}));
+        while (length($signature) % 4) { $signature .= '=' }
+    }
 
     my $options = {
         headers => {
-            "CB-ACCESS-KEY"  => $self->{key},
-            "CB-ACCESS-SIGN" => $signature,
-            "CB-ACCESS-TIMESTAMP" => $time,
-            "CB-ACCESS-PASSPHRASE" => $self->{passphrase},
+            ("CB-ACCESS-KEY"  => $self->{key}) x !!$is_private,
+            ("CB-ACCESS-SIGN" => $signature  ) x !!$is_private,
+            ("CB-ACCESS-TIMESTAMP" => $time  ) x !!$is_private,
+            ("CB-ACCESS-PASSPHRASE" => $self->{passphrase}) x !!$is_private,,
             "Content-Type"   => "application/json",
             "Accept"         => "application/json",
         },
-        (content => $body ) x !!defined($body),
+        (content => $body) x !!defined($body),
     };
 
     my $res = $self->{_http}->request($method, $url, $options);
-    die "Can't retrieve $url: $res->{status} - $res->{reason}"
-        unless $res->{success};
-    eval {
-        $res->{content} = $self->{_json}->decode($res->{content})
-            if defined $res->{content};
-    };
-    die "Can't decode response from $url: $@" if $@;
 
-    log_trace("API response [%s]: %s", $time, $res);
+    if ($res->{headers}{'content-type'} =~ m!application/json!) {
+        $res->{content} = $self->{_json}->decode($res->{content});
+    }
 
-    $res;
+    log_trace("API response [%s]: %s", $time, $res->{content});
+
+    [$res->{status}, $res->{reason}, $res->{content}];
 }
 
-#sub _check_pair {
-#    my $pair = shift;
-#    $pair =~ /\A(\w{3,5})_(\w{3,5})\z/
-#        or die "Invalid pair: must be in the form of 'abc_xyz'";
-#}
+sub public_request {
+    my $self = shift;
+    $self->_request(0, @_);
+}
+
+sub private_request {
+    my $self = shift;
+    $self->_request(1, @_);
+}
 
 1;
 # ABSTRACT: Client API library for GDAX (lite edition)
@@ -140,13 +148,49 @@ sub request {
      passphrase => 'Your API passphrase',
  );
 
- $gdax->request(POST => "");
+ my $res = $gdax->public_request(GET => "/products");
+ # [
+ #   200,
+ #   "OK",
+ #   [
+ #     {
+ #       base_currency => "BCH",
+ #       base_max_size => 200,
+ #       ...
+ #     },
+ #     ...
+ #   ]
+ # ]
+
+ my $res = $gdax->private_request(GET => "/coinbase-accounts");
+ # [
+ #   200,
+ #   "OK",
+ #   [
+ #     {
+ #       active => 1,
+ #       balance => "0.00",
+ #       currency => "USD",
+ #       name => "USD wallet",
+ #       ...
+ #     },
+ #     ...
+ #   ]
+ # ]
+
+ my $res = $gdax->private_request(POST => "/reports", {
+     type => "fills",
+     start_date => "2018-02-01T00:00:00.000Z",
+     end_date   => "2018-02-01T00:00:00.000Z",
+ });
 
 
 =head1 DESCRIPTION
 
 L<https://gdax.com> is a US cryptocurrency exchange. This module provides a Perl
-wrapper for its API.
+wrapper for its API. This module is an alternative to L<Finance::GDAX::API> and
+is more lightweight/barebones (no objects, Moose, etc). Please peruse the GDAX
+API reference to see which API endpoints are available.
 
 
 =head1 METHODS
@@ -168,11 +212,21 @@ Constructor. Known arguments:
 =back
 
 
-=head2 request
+=head2 public_request
 
-Usage: request($method, $request_path, \%args);
+Usage: public_request($method, $request_path [, \%params ]) => [$status_code, $message, $content]
+
+Will send HTTP request and decode the JSON body for you.
+
+=head2 private_request
+
+Usage: public_request($method, $request_path [, \%params ]) => [$status_code, $message, $content]
+
+Will send and sign HTTP request and decode the JSON body for you.
 
 
 =head1 SEE ALSO
 
 GDAX API Reference, L<https://docs.gdax.com/>
+
+L<Finance::GDAX::API>
