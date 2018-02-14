@@ -67,25 +67,46 @@ sub request {
     $self->{secret} or die "Please supply API secret in new()";
     $self->{passphrase} or die "Please supply API passphrase in new()";
 
-    my $time = time();
+    my $time = $ENV{FINANCE_GDAX_LITE_DEBUG_TIME} // sprintf "%.3f", time();
 
-    log_trace("API request: %s", \%query_params);
+    log_trace("API request [%s]: %s %s %s",
+              $time, $method, $request_path, \%query_params);
 
-    my $encoded_query_params = $self->{_json}->encode(\%query_params);
-    my $what = $time . $method . $request_path . $encoded_query_params;
+    my $url = "$url_prefix$request_path";
+
+    my $body;
+    my $encoded_body = '';
+    if ($method eq 'POST') {
+        $body = $encoded_body = $self->{_json}->encode(\%query_params);
+    } else {
+        if (keys %query_params) {
+            my $qs = '?' . join(
+                "&",
+                map { $self->{_urienc}->encode($_ // ''). "=" .
+                          $self->{_urienc}->encode($query_params{$_} // '') }
+                    sort keys(%query_params),
+            );
+            $url .= $qs;
+            $encoded_body = $qs;
+        }
+    }
+
+    my $what = $time . $method . $request_path . $encoded_body;
+    my $signature = hmac_sha256_base64($what, decode_base64($self->{secret}));
+    while (length($signature) % 4) { $signature .= '=' }
 
     my $options = {
         headers => {
             "CB-ACCESS-KEY"  => $self->{key},
-            "CB-ACCESS-SIGN" => hmac_sha256_base64($what, decode_base64($self->{secret})),
+            "CB-ACCESS-SIGN" => $signature,
             "CB-ACCESS-TIMESTAMP" => $time,
             "CB-ACCESS-PASSPHRASE" => $self->{passphrase},
             "Content-Type"   => "application/json",
+            "Accept"         => "application/json",
         },
-        content => $encoded_query_params,
+        (content => $body ) x !!defined($body),
     };
 
-    my $url = "$url_prefix$request_path";
     my $res = $self->{_http}->request($method, $url, $options);
     die "Can't retrieve $url: $res->{status} - $res->{reason}"
         unless $res->{success};
@@ -95,7 +116,7 @@ sub request {
     };
     die "Can't decode response from $url: $@" if $@;
 
-    log_trace("API response: %s", $res);
+    log_trace("API response [%s]: %s", $time, $res);
 
     $res;
 }
