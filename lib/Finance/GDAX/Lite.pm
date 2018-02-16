@@ -188,9 +188,9 @@ sub private_request {
 =head1 DESCRIPTION
 
 L<https://gdax.com> is a US cryptocurrency exchange. This module provides a Perl
-wrapper for its API. This module is an alternative to L<Finance::GDAX::API> and
-is more lightweight/barebones (no objects, Moose, etc). Please peruse the GDAX
-API reference to see which API endpoints are available.
+wrapper for GDAX's API. This module is an alternative to L<Finance::GDAX::API>
+and is more lightweight/barebones (no entity objects, Moose, etc). Please peruse
+the GDAX API reference to see which API endpoints are available.
 
 
 =head1 METHODS
