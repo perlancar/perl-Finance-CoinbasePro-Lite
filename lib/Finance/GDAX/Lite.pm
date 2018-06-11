@@ -122,7 +122,12 @@ sub _request {
 
     log_trace("API response [%s]: %s", $time, $res->{content});
 
-    [$res->{status}, $res->{reason}, $res->{content}];
+    my $reason = $res->{reason};
+    if ($res->{status} != 200 &&
+            ref($res->{content}) eq 'HASH' && $res->{content}{message}) {
+        $reason .= ": $res->{content}{message}";
+    }
+    [$res->{status}, $reason, $res->{content}];
 }
 
 sub public_request {
