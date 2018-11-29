@@ -1,7 +1,13 @@
-0.002   2018-11-29 (PERLANCAR)
+0.003   2018-11-29 (PERLANCAR)
 
 	- Rename module/dist from Finance::GDAX::Lite to
 	  Finance::CoinbasePro::Lite.
+
+
+0.002   2018-06-11 (PERLANCAR)
+
+	- [ux] Include message in response reason, so it's immediately seen
+	  in CLI error message.
 
 
 0.001   2018-02-14 (PERLANCAR)
