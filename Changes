@@ -1,3 +1,9 @@
+0.002   2018-11-29 (PERLANCAR)
+
+	- Rename module/dist from Finance::GDAX::Lite to
+	  Finance::CoinbasePro::Lite.
+
+
 0.001   2018-02-14 (PERLANCAR)
 
         - First, early release.
