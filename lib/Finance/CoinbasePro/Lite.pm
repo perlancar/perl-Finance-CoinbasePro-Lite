@@ -232,3 +232,8 @@ Will send and sign HTTP request and decode the JSON body for you.
 =head1 SEE ALSO
 
 Coinbase Pro API Reference, L<https://docs.pro.coinbase.com/>
+
+L<Finance::GDAX::API>
+
+CLI's: L<Finance::CoinbasePro::API::CLI>, L<coinbasepro-lite> from
+L<App::coinbase::lite>
