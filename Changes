@@ -1,3 +1,11 @@
+0.004   2018-11-29 (PERLANCAR)
+
+	- No functional changes.
+
+	- [doc] Mention related modules: Finance::GDAX::API,
+	  Finance::CoinbasePro::API::CLI, App::coinbasepro::lite.
+
+
 0.003   2018-11-29 (PERLANCAR)
 
 	- Rename module/dist from Finance::GDAX::Lite to
