@@ -1,4 +1,4 @@
-package Finance::GDAX::Lite;
+package Finance::CoinbasePro::Lite;
 
 # DATE
 # VERSION
@@ -12,7 +12,7 @@ use Digest::SHA qw(hmac_sha256_base64);
 use MIME::Base64 qw(decode_base64);
 use Time::HiRes qw(time);
 
-my $url_prefix = "https://api.gdax.com";
+my $url_prefix = "https://api.pro.coinbase.com";
 
 sub new {
     my ($class, %args) = @_;
@@ -71,7 +71,7 @@ sub _request {
         $self->{passphrase} or die "Please supply API passphrase in new()";
     }
 
-    my $time = $ENV{FINANCE_GDAX_LITE_DEBUG_TIME} // sprintf "%.3f", time();
+    my $time = $ENV{FINANCE_COINBASEPRO_LITE_DEBUG_TIME} // sprintf "%.3f", time();
     log_trace("API %s request [%s]: %s %s %s",
               $is_private ? "private" : "public",
               $time, $method, $request_path, $params);
@@ -136,19 +136,19 @@ sub private_request {
 }
 
 1;
-# ABSTRACT: Client API library for GDAX (lite edition)
+# ABSTRACT: Client API library for Coinbase Pro (lite edition)
 
 =head1 SYNOPSIS
 
- use Finance::GDAX::Lite;
+ use Finance::CoinbasePro::Lite;
 
- my $gdax = Finance::GDAX::Lite->new(
+ my $cbp = Finance::CoinbasePro::Lite->new(
      key        => 'Your API key',
      secret     => 'Your API secret',
      passphrase => 'Your API passphrase',
  );
 
- my $res = $gdax->public_request(GET => "/products");
+ my $res = $cbp->public_request(GET => "/products");
  # [
  #   200,
  #   "OK",
@@ -162,7 +162,7 @@ sub private_request {
  #   ]
  # ]
 
- my $res = $gdax->private_request(GET => "/coinbase-accounts");
+ my $res = $cbp->private_request(GET => "/coinbase-accounts");
  # [
  #   200,
  #   "OK",
@@ -178,7 +178,7 @@ sub private_request {
  #   ]
  # ]
 
- my $res = $gdax->private_request(POST => "/reports", {
+ my $res = $cbp->private_request(POST => "/reports", {
      type => "fills",
      start_date => "2018-02-01T00:00:00.000Z",
      end_date   => "2018-02-01T00:00:00.000Z",
@@ -187,10 +187,9 @@ sub private_request {
 
 =head1 DESCRIPTION
 
-L<https://gdax.com> is a US cryptocurrency exchange. This module provides a Perl
-wrapper for GDAX's API. This module is an alternative to L<Finance::GDAX::API>
-and is more lightweight/barebones (no entity objects, Moose, etc). Please peruse
-the GDAX API reference to see which API endpoints are available.
+Coinbase Pro, L<https://pro.coinbase.com>, is a US cryptocurrency exchange. This
+module provides a Perl wrapper for Coinbase Pro's API. Please peruse the
+Coinbase Pro API reference to see which API endpoints are available.
 
 
 =head1 METHODS
@@ -227,6 +226,4 @@ Will send and sign HTTP request and decode the JSON body for you.
 
 =head1 SEE ALSO
 
-GDAX API Reference, L<https://docs.gdax.com/>
-
-L<Finance::GDAX::API>
+Coinbase Pro API Reference, L<https://docs.pro.coinbase.com/>
